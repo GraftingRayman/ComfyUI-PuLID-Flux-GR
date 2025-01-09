@@ -11,6 +11,7 @@ import comfy.model_management
 from insightface.app import FaceAnalysis
 from facexlib.parsing import init_parsing_model
 from .face_restoration_helper import FaceRestoreHelper
+import gc
 
 import torch.nn.functional as F
 
@@ -220,6 +221,10 @@ def to_gray(img):
 """
 
 class GRPulidFluxModelLoader:
+    def __init__(self):
+        pass
+        self.model = None
+
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {"pulid_file": (folder_paths.get_filename_list("pulid"), )}}
@@ -232,14 +237,26 @@ class GRPulidFluxModelLoader:
         model_path = folder_paths.get_full_path("pulid", pulid_file)
 
         # Also initialize the model, takes longer to load but then it doesn't have to be done every time you change parameters in the apply node
-        model = PulidFluxModel()
+        self.model = GRPulidFluxModel()
 
         logging.info("Loading PuLID-Flux model.")
-        model.from_pretrained(path=model_path)
+        self.model.from_pretrained(path=model_path)
 
-        return (model,)
+        return (self.model,)
+
+    def __del__(self):
+        # Ensure cleanup of resources when the object is destroyed
+        if self.model:
+            # Perform any necessary cleanup for the model
+            del self.model
+        gc.collect()
+
 
 class GRPulidFluxInsightFaceLoader:
+    def __init__(self):
+        pass
+        self.model = None
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -253,12 +270,25 @@ class GRPulidFluxInsightFaceLoader:
     CATEGORY = "pulid"
 
     def load_insightface(self, provider):
-        model = FaceAnalysis(name="antelopev2", root=INSIGHTFACE_DIR, providers=[provider + 'ExecutionProvider',]) # alternative to buffalo_l
-        model.prepare(ctx_id=0, det_size=(640, 640))
+        self.model = FaceAnalysis(name="antelopev2", root=INSIGHTFACE_DIR, providers=[provider + 'ExecutionProvider',]) # alternative to buffalo_l
+        self.model.prepare(ctx_id=0, det_size=(640, 640))
 
-        return (model,)
+        return (self.model,)
 
-class PulidFluxEvaClipLoader:
+    def __del__(self):
+        # Ensure cleanup of resources when the object is destroyed
+        if self.model:
+            # Perform any necessary cleanup for the model
+            del self.model
+        gc.collect()
+
+
+class GRPulidFluxEvaClipLoader:
+    def __init__(self):
+        pass
+        self.model = None
+    gc.collect()
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -274,18 +304,34 @@ class PulidFluxEvaClipLoader:
 
         model, _, _ = create_model_and_transforms('EVA02-CLIP-L-14-336', 'eva_clip', force_custom_clip=True)
 
-        model = model.visual
+        self.model = model.visual
 
-        eva_transform_mean = getattr(model, 'image_mean', OPENAI_DATASET_MEAN)
-        eva_transform_std = getattr(model, 'image_std', OPENAI_DATASET_STD)
+        eva_transform_mean = getattr(self.model, 'image_mean', OPENAI_DATASET_MEAN)
+        eva_transform_std = getattr(self.model, 'image_std', OPENAI_DATASET_STD)
         if not isinstance(eva_transform_mean, (list, tuple)):
-            model["image_mean"] = (eva_transform_mean,) * 3
+            self.model["image_mean"] = (eva_transform_mean,) * 3
         if not isinstance(eva_transform_std, (list, tuple)):
-            model["image_std"] = (eva_transform_std,) * 3
+            self.model["image_std"] = (eva_transform_std,) * 3
 
-        return (model,)
+        return (self.model,)
+
+    def __del__(self):
+        # Ensure cleanup of resources when the object is destroyed
+        if self.model:
+            del self.model
+
+    def cleanup(self):
+        # Explicit cleanup method for manual resource management
+        if self.model:
+            del self.model
+            self.model = None
+        gc.collect()
 
 class GRApplyPulidFlux:
+    def __init__(self):
+        pass
+        self.pulid_data_dict = None
+
     @classmethod
     def INPUT_TYPES(s):  
         return {
@@ -527,10 +573,24 @@ class GRApplyPulidFlux:
 
         return (model,)
 
-    def __del__(self):
+    def cleanup(self):
         # Destroy the data for this node
         if self.pulid_data_dict:
             del self.pulid_data_dict['data'][self.pulid_data_dict['unique_id']]
             del self.pulid_data_dict
+            self.pulid_data_dict = None
+        gc.collect()
 
+NODE_CLASS_MAPPINGS = {
+    "GRPulidFluxModelLoader": GRPulidFluxModelLoader,
+    "GRPulidFluxInsightFaceLoader": GRPulidFluxInsightFaceLoader,
+    "GRPulidFluxEvaClipLoader": GRPulidFluxEvaClipLoader,
+    "GRApplyPulidFlux": GRApplyPulidFlux,
+}
 
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "GRPulidFluxModelLoader": "GR Load PuLID Flux Model",
+    "GRPulidFluxInsightFaceLoader": "GR Load InsightFace (PuLID Flux)",
+    "GRPulidFluxEvaClipLoader": "GR Load Eva Clip (PuLID Flux)",
+    "GRApplyPulidFlux": "GR Apply PuLID Flux",
+}
