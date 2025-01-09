@@ -1,4 +1,11 @@
-#### update Jan.07 2025
+### update Jan.09 2025
+Due to multiple issues, this repo has been renamed and moved 
+
+Should no longer cause conflicts with existing versions
+
+Added cleanup and destruction codes to free up resources
+
+### update Jan.07 2025
 ###
 face_select has two new options
 
