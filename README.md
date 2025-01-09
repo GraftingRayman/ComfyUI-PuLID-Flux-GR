@@ -1,10 +1,3 @@
-# ComfyUI-PuLID-Flux-Enhanced
-adapted from https://github.com/balazik/ComfyUI-PuLID-Flux
-
-workflow: see example flux_pulid_multi.json
-
-# Make sure to git clone this repo to use the updated features
-
 #### update Jan.07 2025
 ###
 face_select has two new options
