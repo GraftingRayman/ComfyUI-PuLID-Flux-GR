@@ -29,7 +29,8 @@ if normal is selected in face_select, you can use the blur settings to ignore bl
 
 normal usually selects the face to the far right of the image, but don't count on that to happen, did not delve into the mathematics of what gets chosen
 
-![image](https://github.com/user-attachments/assets/28d8feaa-4d49-4ada-b7e4-b00aac6bd432)
+![image](https://github.com/user-attachments/assets/7c668c17-5f60-477c-93d5-91d88889dc5f)
+
 
 
 
