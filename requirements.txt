@@ -4,3 +4,4 @@ onnxruntime
 onnxruntime-gpu
 ftfy
 timm
+torch
