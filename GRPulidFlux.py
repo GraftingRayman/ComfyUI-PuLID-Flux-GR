@@ -1,3 +1,4 @@
+import comfy.model_management as model_management
 import torch
 from torch import nn, Tensor
 from torchvision import transforms
@@ -12,15 +13,13 @@ from insightface.app import FaceAnalysis
 from facexlib.parsing import init_parsing_model
 from .face_restoration_helper import FaceRestoreHelper
 import gc
-
 import torch.nn.functional as F
-
 from .eva_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
 from .encoders_flux import IDFormer, PerceiverAttentionCA
 
 INSIGHTFACE_DIR = os.path.join(folder_paths.models_dir, "insightface")
-
 MODELS_DIR = os.path.join(folder_paths.models_dir, "pulid")
+
 if "pulid" not in folder_paths.folder_names_and_paths:
     current_paths = [MODELS_DIR]
 else:
@@ -126,6 +125,7 @@ def forward_orig(
                 add = control_i[i]
                 if add is not None:
                     img += add
+            
 
         # PuLID attention
         if self.pulid_data:
@@ -139,8 +139,9 @@ def forward_orig(
                     
                     if condition:
                         img = img + node_data['weight'] * self.pulid_ca[ca_idx].to(device)(node_data['embedding'], img)
+            
                 ca_idx += 1
-
+    
     img = torch.cat((txt, img), 1)
 
     for i, block in enumerate(self.single_blocks):
@@ -152,8 +153,6 @@ def forward_orig(
                 add = control_o[i]
                 if add is not None:
                     img[:, txt.shape[1] :, ...] += add
-
-
         # PuLID attention
         if self.pulid_data:
             real_img, txt = img[:, txt.shape[1]:, ...], img[:, :txt.shape[1], ...]
@@ -169,10 +168,9 @@ def forward_orig(
                     if condition:
                         real_img = real_img + node_data['weight'] * self.pulid_ca[ca_idx].to(device)(node_data['embedding'], real_img)
                 ca_idx += 1
+                
             img = torch.cat((txt, real_img), 1)
-
     img = img[:, txt.shape[1] :, ...]
-
     img = self.final_layer(img, vec)  # (N, T, patch_size ** 2 * out_channels)
     return img
 
@@ -214,12 +212,6 @@ def to_gray(img):
     x = x.repeat(1, 3, 1, 1)
     return x
 
-"""
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- Nodes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-"""
-
 class GRPulidFluxModelLoader:
     def __init__(self):
         pass
@@ -245,11 +237,22 @@ class GRPulidFluxModelLoader:
         return (self.model,)
 
     def __del__(self):
-        # Ensure cleanup of resources when the object is destroyed
         if self.model:
-            # Perform any necessary cleanup for the model
-            del self.model
+            logging.info("Cleaning up PuLID-Flux model resources...")
+            try:
+                if hasattr(self.model, "to") and callable(self.model.to):
+                    logging.info("Moving model to CPU before cleanup.")
+                    self.model.to("cpu")
+                del self.model
+            except Exception as e:
+                logging.warning(f"Error while cleaning up model resources: {e}")
+            finally:
+                self.model = None
         gc.collect()
+        if torch.cuda.is_available():
+            logging.info("Clearing CUDA memory cache.")
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
 
 class GRPulidFluxInsightFaceLoader:
@@ -275,12 +278,41 @@ class GRPulidFluxInsightFaceLoader:
 
         return (self.model,)
 
-    def __del__(self):
-        # Ensure cleanup of resources when the object is destroyed
+    def cleanup(self):
         if self.model:
-            # Perform any necessary cleanup for the model
-            del self.model
+            logging.info("Cleaning up InsightFace model resources...")
+            try:
+                if hasattr(self.model, "to") and callable(self.model.to):
+                    logging.info("Moving model to CPU before cleanup (if applicable).")
+                    self.model.to("cpu")
+                del self.model
+            except Exception as e:
+                logging.warning(f"Error during manual cleanup of InsightFace model: {e}")
+            finally:
+                self.model = None
         gc.collect()
+        if torch.cuda.is_available():
+            logging.info("Clearing CUDA memory cache.")
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+
+    def __del__(self):
+        if self.model:
+            logging.info("Automatically cleaning up InsightFace model resources...")
+            try:
+                if hasattr(self.model, "to") and callable(self.model.to):
+                    logging.info("Moving model to CPU before cleanup (if applicable).")
+                    self.model.to("cpu")
+                del self.model
+            except Exception as e:
+                logging.warning(f"Error during automatic cleanup of InsightFace model: {e}")
+            finally:
+                self.model = None
+        gc.collect()
+        if torch.cuda.is_available():
+            logging.info("Clearing CUDA memory cache.")
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
 
 class GRPulidFluxEvaClipLoader:
@@ -315,17 +347,41 @@ class GRPulidFluxEvaClipLoader:
 
         return (self.model,)
 
-    def __del__(self):
-        # Ensure cleanup of resources when the object is destroyed
-        if self.model:
-            del self.model
-
     def cleanup(self):
-        # Explicit cleanup method for manual resource management
         if self.model:
-            del self.model
-            self.model = None
+            logging.info("Cleaning up EVA-CLIP model resources...")
+            try:
+                if hasattr(self.model, "to") and callable(self.model.to):
+                    logging.info("Moving model to CPU before cleanup (if applicable).")
+                    self.model.to("cpu")
+                del self.model
+            except Exception as e:
+                logging.warning(f"Error during manual cleanup of EVA-CLIP model: {e}")
+            finally:
+                self.model = None
         gc.collect()
+        if torch.cuda.is_available():
+            logging.info("Clearing CUDA memory cache.")
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+
+    def __del__(self):
+        if self.model:
+            logging.info("Automatically cleaning up EVA-CLIP model resources...")
+            try:
+                if hasattr(self.model, "to") and callable(self.model.to):
+                    logging.info("Moving model to CPU before cleanup (if applicable).")
+                    self.model.to("cpu")
+                del self.model
+            except Exception as e:
+                logging.warning(f"Error during automatic cleanup of EVA-CLIP model: {e}")
+            finally:
+                self.model = None
+        gc.collect()
+        if torch.cuda.is_available():
+            logging.info("Clearing CUDA memory cache.")
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
 class GRApplyPulidFlux:
     def __init__(self):
@@ -446,13 +502,7 @@ class GRApplyPulidFlux:
                 face_helper.get_face_landmarks_5(only_center_face=False, blur_ratio=blur, select_by_index=face_number)
             else:
                 face_helper.get_face_landmarks_5(only_center_face=False, blur_ratio=blur)
-                
-                
-            
             face_helper.align_warp_face()
-            
-
-            
             if len(face_helper.cropped_faces) == 0:
                 # No face detected, skip this image
                 continue
@@ -571,15 +621,98 @@ class GRApplyPulidFlux:
         # Keep a reference for destructor (if node is deleted the data will be deleted as well)
         self.pulid_data_dict = {'data': flux_model.pulid_data, 'unique_id': unique_id}
 
+        self._cleanup(eva_clip, pulid_flux, model.model.diffusion_model)
+       
         return (model,)
 
-    def cleanup(self):
-        # Destroy the data for this node
-        if self.pulid_data_dict:
-            del self.pulid_data_dict['data'][self.pulid_data_dict['unique_id']]
-            del self.pulid_data_dict
-            self.pulid_data_dict = None
+    def _cleanup(self, eva_clip, pulid_flux, flux_model):
+        print("Performing cleanup...")
+        UnloadAllModels.execute(flux_model=flux_model)
+        del eva_clip, pulid_flux
+        torch.cuda.empty_cache()
         gc.collect()
+        print("Cleanup completed.")
+    
+    def cleanup_models():
+        print("Running cleanup_models...")
+        global current_loaded_models
+        to_delete = []
+        for i in range(len(current_loaded_models)):
+            if current_loaded_models[i].real_model() is None:
+                to_delete = [i] + to_delete
+    
+        for i in to_delete:
+            x = current_loaded_models.pop(i)
+            del x
+
+
+    def cleanup_models_gc():
+        print("Running cleanup_models_gc...")
+        global current_loaded_models
+        do_gc = False
+        for i in range(len(current_loaded_models)):
+            cur = current_loaded_models[i]
+            if cur.is_dead():
+                print(
+                    f"Potential memory leak detected with model {cur.real_model().__class__.__name__}. "
+                    f"Performing full garbage collection."
+                )
+                do_gc = True
+                break
+        if do_gc:
+            gc.collect()
+            torch.cuda.empty_cache()
+            for i in range(len(current_loaded_models)):
+                cur = current_loaded_models[i]
+                if cur.is_dead():
+                    print(
+                        f"WARNING: Memory leak with model {cur.real_model().__class__.__name__}. "
+                        f"Ensure it is not being referenced elsewhere."
+                    )
+
+class UnloadAllModels:
+    @staticmethod
+    def execute(flux_model=None):
+        print("Unload All Models:")
+        print(" - Unloading all models...")
+        model_management.unload_all_models()
+        model_management.soft_empty_cache(True)
+        if flux_model is not None:
+            UnloadAllModels._clear_flux_latents(flux_model)
+        UnloadAllModels._cleanup_memory()
+        return {"status": "success", "message": "All models unloaded and memory cleaned up."}
+
+    @staticmethod
+    def _clear_flux_latents(flux_model):
+        try:
+            if hasattr(flux_model, "latent_rgb_factors") and hasattr(flux_model, "latent_channels"):
+                print(" - Detected a Flux-like model. Clearing latents...")
+                if hasattr(flux_model, "latent_rgb_factors"):
+                    flux_model.latent_rgb_factors = None
+                    print("   - Cleared latent_rgb_factors.")
+                if hasattr(flux_model, "latent_rgb_factors_bias"):
+                    flux_model.latent_rgb_factors_bias = None
+                    print("   - Cleared latent_rgb_factors_bias.")
+                if hasattr(flux_model, "taesd_decoder_name"):
+                    flux_model.taesd_decoder_name = None
+                    print("   - Cleared taesd_decoder_name reference.")
+                flux_model.latent_channels = 0
+                print("   - Cleared latent_channels.")
+            else:
+                print("   - Model does not appear to be a Flux-like model. Skipping latent cleanup.")
+        except Exception as e:
+            print(f"   - Error during Flux latent cleanup: {e}")
+
+    @staticmethod
+    def _cleanup_memory():
+        try:
+            print(" - Clearing system and GPU cache...")
+            gc.collect()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            print("   - Cache cleared successfully.")
+        except Exception as e:
+            print(f"   - Unable to clear cache: {e}")
 
 NODE_CLASS_MAPPINGS = {
     "GRPulidFluxModelLoader": GRPulidFluxModelLoader,
