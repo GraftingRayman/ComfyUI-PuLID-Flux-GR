@@ -622,7 +622,14 @@ class GRApplyPulidFlux:
         self.pulid_data_dict = {'data': flux_model.pulid_data, 'unique_id': unique_id}
 
         self._cleanup(eva_clip, pulid_flux, model.model.diffusion_model)
-       
+        device = torch.device("cpu")
+        eva_clip.to(device, dtype=dtype)
+        pulid_flux.to(device, dtype=dtype)
+        torch.cuda.empty_cache()
+        del eva_clip
+        del pulid_flux
+
+
         return (model,)
 
     def _cleanup(self, eva_clip, pulid_flux, flux_model):
