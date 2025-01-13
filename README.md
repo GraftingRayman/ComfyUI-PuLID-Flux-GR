@@ -1,3 +1,18 @@
+# Installation:
+Goto your custom_nodes folder and type the following in terminal/command prompt:
+
+git clone https://github.com/GraftingRayman/ComfyUI-PuLID-Flux-GR
+
+Then install the requirements by entering the following in terminal/command prompt:
+
+pip install -r requirements.txt
+
+If you are using a portable version of ComfyUI, you need to run the following in terminal/command prompt:
+
+./python.exe -m install -r <your path to comfyui>\ComfyUI_windows_portable\ComfyUI\custom_nodes\ComfyUI-PuLID-Flux-GR\requirements.txt
+
+You will need to fix the path in the above command to match the location of your ComfyUI
+
 ### update Jan.09 2025
 Due to multiple issues, this repo has been renamed and moved 
 
