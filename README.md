@@ -5,7 +5,7 @@ git clone https://github.com/GraftingRayman/ComfyUI-PuLID-Flux-GR
 
 Then install the requirements by entering the following in terminal/command prompt:
 
-pip install -r requirements.txt
+<code>pip install -r requirements.txt</code>
 
 If you are using a portable version of ComfyUI, you need to run the following in terminal/command prompt:
 
