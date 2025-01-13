@@ -9,7 +9,7 @@ Then install the requirements by entering the following in terminal/command prom
 
 If you are using a portable version of ComfyUI, you need to run the following in terminal/command prompt:
 
-<code>./python.exe -m install -r <your path to comfyui>\ComfyUI_windows_portable\ComfyUI\custom_nodes\ComfyUI-PuLID-Flux-GR\requirements.txt</code>
+<code><your path to comfyui>\ComfyUI_windows_portable\ComfyUI\python_embdeded\python.exe -m install -r <your path to comfyui>\ComfyUI_windows_portable\ComfyUI\custom_nodes\ComfyUI-PuLID-Flux-GR\requirements.txt</code>
 
 You will need to fix the path in the above command to match the location of your ComfyUI
 
