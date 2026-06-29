@@ -1,3 +1,10 @@
+Welcome to my git
+
+If you would like to support me in any way, anything helps
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)]([https://ko-fi.com/J5N221K0D5](https://ko-fi.com/graftingrayman))
+
+
 ### update Jan.09 2025
 Due to multiple issues, this repo has been renamed and moved 
 
